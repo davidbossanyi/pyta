@@ -1,0 +1,60 @@
+[tool.poetry]
+name = "pyta"
+version = "0.1.0"
+description = "Desktop App for Transient Absorption Spectroscopy Systems"
+authors = ["David Bossanyi <22292532+davidbossanyi@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyqt6 = "^6.4.2"
+numpy = "^1.24.2"
+pipython = "^2.9.0.4"
+pyvisa = "^1.13.0"
+h5py = "^3.8.0"
+pyqtgraph = "^0.13.1"
+pandas = "^1.5.3"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.2.1"
+pytest-cov = "^4.0.0"
+
+[tool.poetry.group.lint.dependencies]
+pre-commit = "^3.0.4"
+black = "^23.1.0"
+isort = "^5.12.0"
+ruff = "^0.0.247"
+mypy = "^1.0.1"
+deptry = "^0.8.0"
+
+[build-system]
+requires = ["poetry-core>=1.2.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.black]
+line-length = 127
+
+[tool.isort]
+multi_line_output = 3
+line_length = 127
+profile = "black"
+
+[tool.coverage.run]
+omit = ["tests/*"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+files = [
+    "pyta",
+]
+exclude = [
+    "pyta/ui",
+]
