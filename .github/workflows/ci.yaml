@@ -53,8 +53,8 @@ jobs:
         run: |
           make lint
 
-#      - name: Test
-#        env:
-#          QT_QPA_PLATFORM: offscreen
-#        run: |
-#          make test
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          make test
