@@ -8,7 +8,6 @@ from pyta.processing.models import AcquisitionData, AcquisitionOnOffData, Linear
 
 
 class Acquisition(QtCore.QObject, AcquisitionProcessingMixin):
-
     processing_finished = QtCore.pyqtSignal()
     bgd_processing_finished = QtCore.pyqtSignal()
 
@@ -25,8 +24,18 @@ class Acquisition(QtCore.QObject, AcquisitionProcessingMixin):
         return self._data
 
     @QtCore.pyqtSlot(np.ndarray, np.ndarray, int, int, int, int)
-    def process_background(self, probe_array: np.ndarray, reference_array: np.ndarray, first_pixel: int, num_pixels: int, trigger_pixel: int, trigger_threshold: int) -> None:
-        untrimmed_probe_array, raw_probe_array, raw_reference_array = self.initialise_arrays(probe_array, reference_array, first_pixel, num_pixels)
+    def process_background(
+        self,
+        probe_array: np.ndarray,
+        reference_array: np.ndarray,
+        first_pixel: int,
+        num_pixels: int,
+        trigger_pixel: int,
+        trigger_threshold: int,
+    ) -> None:
+        untrimmed_probe_array, raw_probe_array, raw_reference_array = self.initialise_arrays(
+            probe_array, reference_array, first_pixel, num_pixels
+        )
         probe_array = raw_probe_array.copy()
         reference_array = raw_reference_array.copy()
         if self._use_linear_pixel_correction:
@@ -50,13 +59,17 @@ class Acquisition(QtCore.QObject, AcquisitionProcessingMixin):
         use_average_off_shots: bool = True,
     ) -> None:
         reference_manipulation_factors = None  # ToDo: implement
-        untrimmed_probe_array, raw_probe_array, raw_reference_array = self.initialise_arrays(probe_array, reference_array, first_pixel, num_pixels)
+        untrimmed_probe_array, raw_probe_array, raw_reference_array = self.initialise_arrays(
+            probe_array, reference_array, first_pixel, num_pixels
+        )
         probe_array = raw_probe_array.copy()
         reference_array = raw_reference_array.copy()
         if self._use_linear_pixel_correction:
             lpc = self._linear_pixel_correction = self.set_linear_pixel_correlation(raw_probe_array, raw_reference_array)
             probe_array, reference_array = self.linear_pixel_correction(probe_array, reference_array, lpc)
-        data, trigger = self.separate_on_off(untrimmed_probe_array, probe_array, reference_array, trigger_pixel, trigger_threshold, tflip)
+        data, trigger = self.separate_on_off(
+            untrimmed_probe_array, probe_array, reference_array, trigger_pixel, trigger_threshold, tflip
+        )
         if self._use_bgd_subtraction:
             data = self.subtract_bgd(data, self._background)
         if reference_manipulation_factors:
@@ -68,11 +81,15 @@ class Acquisition(QtCore.QObject, AcquisitionProcessingMixin):
             refd_probe_off = refd_probe_off_array.mean(axis=0)
             probe_off_avg = refd_probe_off if use_average_off_shots else None
             dtt = self.calculate_dtt(refd_probe_on_array, refd_probe_off_array, probe_off_avg)
-            probe_shot_error, ref_shot_error, dtt_error = self.calculate_dtt_error(data, refd_probe_off_array, data_avg_for_error_calc)
+            probe_shot_error, ref_shot_error, dtt_error = self.calculate_dtt_error(
+                data, refd_probe_off_array, data_avg_for_error_calc
+            )
         else:
             probe_off_avg = data_avg.probe_off if use_average_off_shots else None
             dtt = self.calculate_dtt(data.probe_on, data.probe_off, probe_off_avg)
-            probe_shot_error, ref_shot_error, dtt_error = self.calculate_dtt_error(data, data.probe_off, data_avg_for_error_calc)
+            probe_shot_error, ref_shot_error, dtt_error = self.calculate_dtt_error(
+                data, data.probe_off, data_avg_for_error_calc
+            )
         self._data = AcquisitionData(
             probe_on=data_avg.probe_on,
             probe_on_array=data.probe_on,
