@@ -1,6 +1,6 @@
 import PyQt5.uic
 
-fpath = 'gui.ui'
+fpath = "gui.ui"
 
-with open('gui.py', 'w') as file:
+with open("gui.py", "w") as file:
     PyQt5.uic.compileUi(fpath, file)

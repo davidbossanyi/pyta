@@ -11,7 +11,6 @@ class AbstractQObject(sip.wrappertype, abc.ABCMeta):
 
 
 class ICamera(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
-
     acquisition_finished = QtCore.pyqtSignal(np.ndarray, np.ndarray, int, int)
     connection_closed = QtCore.pyqtSignal()
     connection_opened = QtCore.pyqtSignal()
@@ -25,8 +24,7 @@ class ICamera(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
 
     @abc.abstractmethod
     def __str__(self) -> str:
-        """Display name of the camera hardware
-        """
+        """Display name of the camera hardware"""
 
     @property
     def number_of_scans(self) -> int:
@@ -47,20 +45,17 @@ class ICamera(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
     @property
     @abc.abstractmethod
     def total_pixels(self) -> int:
-        """Total number of pixels in the wavelength direction of the camera array
-        """
+        """Total number of pixels in the wavelength direction of the camera array"""
 
     @property
     @abc.abstractmethod
     def valid_pixels(self) -> int:
-        """Number of pixels (out of ``total_pixels``) that contain valid data
-        """
+        """Number of pixels (out of ``total_pixels``) that contain valid data"""
 
     @property
     @abc.abstractmethod
     def first_pixel(self) -> int:
-        """First pixel in ``total_pixels`` that contains valid data
-        """
+        """First pixel in ``total_pixels`` that contains valid data"""
 
     @property
     def probe(self) -> np.ndarray:
@@ -88,25 +83,20 @@ class ICamera(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
 
     @abc.abstractmethod
     def _read(self) -> None:
-        """Update the ``self._probe`` and ``self._reference`` arrays by taking measurements
-        """
+        """Update the ``self._probe`` and ``self._reference`` arrays by taking measurements"""
 
     @abc.abstractmethod
     def _connect(self) -> None:
-        """Connect to and initialise the camera(s)
-        """
+        """Connect to and initialise the camera(s)"""
 
     @abc.abstractmethod
     def _disconnect(self) -> None:
-        """Disconnect from the camera(s)
-        """
+        """Disconnect from the camera(s)"""
 
     @abc.abstractmethod
     def _overflow(self) -> None:
-        """If applicable, clear any overflow from the camera memory after reading
-        """
+        """If applicable, clear any overflow from the camera memory after reading"""
 
     @abc.abstractmethod
     def update_number_of_scans(self, number_of_scans: int) -> None:
-        """Call this to update the number of scans - the camera array may need to be re-initialised
-        """
+        """Call this to update the number of scans - the camera array may need to be re-initialised"""
