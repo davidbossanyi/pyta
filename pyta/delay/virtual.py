@@ -8,7 +8,6 @@ from pyta.delay.base import IDelay
 
 
 class VirtualDelay(IDelay):
-
     def __str__(self) -> str:
         return "Virtual"
 

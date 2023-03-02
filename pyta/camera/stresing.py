@@ -61,27 +61,33 @@ class VisCamera(ICamera):
         return self._valid_pixels
 
     def _set_argtypes(self) -> None:
-        self.dll.DLLReadFFLoop.argtypes = [ct.c_uint32,
-                                           np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags=['C', 'W']),
-                                           ct.c_uint32,
-                                           ct.c_int32,
-                                           ct.c_uint32,
-                                           ct.c_uint32,
-                                           ct.c_uint32,
-                                           ct.c_uint32,
-                                           ct.c_uint32,
-                                           ct.c_uint32,
-                                           ct.c_uint16,
-                                           ct.c_uint8,
-                                           ct.c_uint8]
-        self.dll.DLLGETCCD.argtypes = [ct.c_uint32,
-                                       np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags=['C', 'W']),
-                                       ct.c_uint32,
-                                       ct.c_int32,
-                                       ct.c_uint32]
-        self.dll.DLLReadFifo.argtypes = [ct.c_uint32,
-                                         np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags=['C', 'W']),
-                                         ct.c_int32]
+        self.dll.DLLReadFFLoop.argtypes = [
+            ct.c_uint32,
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags=["C", "W"]),
+            ct.c_uint32,
+            ct.c_int32,
+            ct.c_uint32,
+            ct.c_uint32,
+            ct.c_uint32,
+            ct.c_uint32,
+            ct.c_uint32,
+            ct.c_uint32,
+            ct.c_uint16,
+            ct.c_uint8,
+            ct.c_uint8,
+        ]
+        self.dll.DLLGETCCD.argtypes = [
+            ct.c_uint32,
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags=["C", "W"]),
+            ct.c_uint32,
+            ct.c_int32,
+            ct.c_uint32,
+        ]
+        self.dll.DLLReadFifo.argtypes = [
+            ct.c_uint32,
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags=["C", "W"]),
+            ct.c_int32,
+        ]
 
     def _connect(self) -> None:
         self.CCDDrvInit()
@@ -116,7 +122,7 @@ class VisCamera(ICamera):
         self._construct_data_vectors()
 
     def _construct_data_vectors(self) -> None:
-        hilo_array = self.data.view(np.uint16)[:, 0:self.total_pixels * 2]  # temp = shots x (2*pixels)
+        hilo_array = self.data.view(np.uint16)[:, 0 : self.total_pixels * 2]  # temp = shots x (2*pixels)
         hilo_array = hilo_array.reshape(hilo_array.shape[0], 2, self.total_pixels)
         self._probe = hilo_array[:, 0, :]  # pointers onto self.data
         self._reference = hilo_array[:, 1, :]
@@ -136,15 +142,13 @@ class VisCamera(ICamera):
         self.dll.DLLAboutDrv(ct.c_uint32(self.board_number))
 
     def ActCooling(self) -> None:
-        self.dll.DLLActCooling(ct.c_uint32(self.board_number),
-                               ct.c_uint8(1))
+        self.dll.DLLActCooling(ct.c_uint32(self.board_number), ct.c_uint8(1))
 
     def ActMouse(self) -> None:
         self.dll.DLLActMouse(ct.c_uint32(self.board_number))
 
     def Cal16bit(self) -> None:
-        self.dll.DLLCal16Bit(ct.c_uint32(self.board_number),
-                             ct.c_uint32(self.zadr))
+        self.dll.DLLCal16Bit(ct.c_uint32(self.board_number), ct.c_uint32(self.zadr))
 
     def CCDDrvExit(self) -> None:
         self.dll.DLLCCDDrvExit(ct.c_uint32(self.board_number))
@@ -157,14 +161,12 @@ class VisCamera(ICamera):
         self.dll.DLLCloseShutter(ct.c_uint32(self.board_number))
 
     def ClrRead(self, clr_count: int) -> None:
-        self.dll.DLLClrRead(ct.c_uint32(self.board_number),
-                            ct.c_uint32(self.fft_lines),
-                            ct.c_uint32(self.zadr),
-                            ct.c_uint32(clr_count))
+        self.dll.DLLClrRead(
+            ct.c_uint32(self.board_number), ct.c_uint32(self.fft_lines), ct.c_uint32(self.zadr), ct.c_uint32(clr_count)
+        )
 
     def ClrShCam(self) -> None:
-        self.dll.DLLClrShCam(ct.c_uint32(self.board_number),
-                             ct.c_uint32(self.zadr))
+        self.dll.DLLClrShCam(ct.c_uint32(self.board_number), ct.c_uint32(self.zadr))
 
     def DeactMouse(self) -> None:
         self.dll.DLLDeactMouse(ct.c_uint32(self.board_number))
@@ -188,26 +190,30 @@ class VisCamera(ICamera):
         return bool(active)
 
     def GetCCD(self) -> np.ndarray:
-        self.dll.DLLGETCCD(ct.c_uint32(self.board_number),
-                           self.array,
-                           ct.c_uint32(self.fft_lines),
-                           ct.c_int32(self.fkt),
-                           ct.c_uint32(self.zadr))
+        self.dll.DLLGETCCD(
+            ct.c_uint32(self.board_number),
+            self.array,
+            ct.c_uint32(self.fft_lines),
+            ct.c_int32(self.fkt),
+            ct.c_uint32(self.zadr),
+        )
         return self.array
 
     def HighSlope(self) -> None:
         self.dll.DLLHighSlope(ct.c_uint32(self.board_number))
 
     def InitBoard(self) -> None:
-        self.dll.DLLInitBoard(ct.c_uint32(self.board_number),
-                              ct.c_int8(self.sym),
-                              ct.c_uint8(self.burst),
-                              ct.c_uint32(self.total_pixels),
-                              ct.c_uint32(self.waits),
-                              ct.c_uint32(self.flag816),
-                              ct.c_uint32(self.pportadr),
-                              ct.c_uint32(self.pclk),
-                              ct.c_uint32(self.adrdelay))
+        self.dll.DLLInitBoard(
+            ct.c_uint32(self.board_number),
+            ct.c_int8(self.sym),
+            ct.c_uint8(self.burst),
+            ct.c_uint32(self.total_pixels),
+            ct.c_uint32(self.waits),
+            ct.c_uint32(self.flag816),
+            ct.c_uint32(self.pportadr),
+            ct.c_uint32(self.pclk),
+            ct.c_uint32(self.adrdelay),
+        )
 
     def InitSysTimer(self) -> Any:
         return self.dll.DLLInitSysTimer()
@@ -225,13 +231,10 @@ class VisCamera(ICamera):
         self.dll.DLLOutTrigLow(ct.c_uint32(self.board_number))
 
     def OutTrigPulse(self, pulse_width: int) -> None:
-        self.dll.DLLOutTrigPulse(ct.c_uint32(self.board_number),
-                                 ct.c_uint32(pulse_width))
+        self.dll.DLLOutTrigPulse(ct.c_uint32(self.board_number), ct.c_uint32(pulse_width))
 
     def ReadFifo(self) -> np.ndarray:
-        self.dll.DLLReadFifo(ct.c_uint32(self.board_number),
-                             self.array,
-                             ct.c_int32(self.fkt))
+        self.dll.DLLReadFifo(ct.c_uint32(self.board_number), self.array, ct.c_int32(self.fkt))
         return self.array
 
     def ReadFFCounter(self) -> int:
@@ -239,19 +242,21 @@ class VisCamera(ICamera):
         return counter
 
     def ReadFFLoop(self, number_of_scans: int, exposure_time_us: int) -> None:
-        self.dll.DLLReadFFLoop(ct.c_uint32(self.board_number),
-                               self.array,
-                               ct.c_uint32(self.fft_lines),
-                               ct.c_int32(self.fkt),
-                               ct.c_uint32(self.zadr),
-                               ct.c_uint32(number_of_scans + 10),
-                               ct.c_uint32(exposure_time_us),
-                               ct.c_uint32(self.freq),
-                               ct.c_uint32(self.threadp),
-                               ct.c_uint32(self.clear_cnt),
-                               ct.c_uint16(self.release_ms),
-                               ct.c_uint8(self.exttrig),
-                               ct.c_uint8(self.block_trigger))
+        self.dll.DLLReadFFLoop(
+            ct.c_uint32(self.board_number),
+            self.array,
+            ct.c_uint32(self.fft_lines),
+            ct.c_int32(self.fkt),
+            ct.c_uint32(self.zadr),
+            ct.c_uint32(number_of_scans + 10),
+            ct.c_uint32(exposure_time_us),
+            ct.c_uint32(self.freq),
+            ct.c_uint32(self.threadp),
+            ct.c_uint32(self.clear_cnt),
+            ct.c_uint16(self.release_ms),
+            ct.c_uint8(self.exttrig),
+            ct.c_uint8(self.block_trigger),
+        )
 
     def RSFifo(self) -> None:
         self.dll.DLLRSFifo(ct.c_uint32(self.board_number))
@@ -260,12 +265,10 @@ class VisCamera(ICamera):
         self.dll.DLLRsTOREG(ct.c_uint32(self.board_number))
 
     def SetADAmpRed(self, gain: int) -> None:
-        self.dll.DLLSetADAmpRed(ct.c_uint32(self.board_number),
-                                ct.c_uint32(gain))
+        self.dll.DLLSetADAmpRed(ct.c_uint32(self.board_number), ct.c_uint32(gain))
 
     def SetAD16Default(self) -> None:
-        self.dll.DLLSetAD16Default(ct.c_uint32(self.board_number),
-                                   ct.c_uint32(1))
+        self.dll.DLLSetAD16Default(ct.c_uint32(self.board_number), ct.c_uint32(1))
 
     def SetExtTrig(self) -> None:
         self.dll.DLLSetExtTrig(ct.c_uint32(self.board_number))
@@ -277,41 +280,31 @@ class VisCamera(ICamera):
         self.dll.DLLSetIntTrig(ct.c_uint32(self.board_number))
 
     def SetISFFT(self, _set: int) -> None:
-        self.dll.DLLSetISFFT(ct.c_uint32(self.board_number),
-                             ct.c_uint8(_set))
+        self.dll.DLLSetISFFT(ct.c_uint32(self.board_number), ct.c_uint8(_set))
 
     def SetISPDA(self, _set: int) -> None:
-        self.dll.DLLSetISPDA(ct.c_uint32(self.board_number),
-                             ct.c_uint8(_set))
+        self.dll.DLLSetISPDA(ct.c_uint32(self.board_number), ct.c_uint8(_set))
 
     def SetOvsmpl(self) -> None:
-        self.dll.DLLSetOvsmpl(ct.c_uint32(self.board_number),
-                              ct.c_uint32(self.zadr))
+        self.dll.DLLSetOvsmpl(ct.c_uint32(self.board_number), ct.c_uint32(self.zadr))
 
     def SetTemp(self, level: int) -> None:
-        self.dll.DLLSetTemp(ct.c_uint32(self.board_number),
-                            ct.c_uint32(level))
+        self.dll.DLLSetTemp(ct.c_uint32(self.board_number), ct.c_uint32(level))
 
     def SetupDelay(self, delay: int) -> None:
-        self.dll.DLLSetupDELAY(ct.c_uint32(self.board_number),
-                               ct.c_uint32(delay))
+        self.dll.DLLSetupDELAY(ct.c_uint32(self.board_number), ct.c_uint32(delay))
 
     def SetupHAModule(self, fft_lines: int) -> None:
-        self.dll.DLLSetupHAModule(ct.c_uint32(self.board_number),
-                                  ct.c_uint32(fft_lines))
+        self.dll.DLLSetupHAModule(ct.c_uint32(self.board_number), ct.c_uint32(fft_lines))
 
     def SetupVCLK(self) -> None:
-        self.dll.DLLSetupVCLK(ct.c_uint32(self.board_number),
-                              ct.c_uint32(self.fft_lines),
-                              ct.c_uint8(self.vfreq))
+        self.dll.DLLSetupVCLK(ct.c_uint32(self.board_number), ct.c_uint32(self.fft_lines), ct.c_uint8(self.vfreq))
 
     def StartTimer(self, exposure_time: int) -> None:
-        self.dll.DLLStartTimer(ct.c_uint32(self.board_number),
-                               ct.c_uint32(exposure_time))
+        self.dll.DLLStartTimer(ct.c_uint32(self.board_number), ct.c_uint32(exposure_time))
 
     def TempGood(self, channel: int) -> None:
-        self.dll.DLLTempGood(ct.c_uint32(self.board_number),
-                             ct.c_uint32(channel))
+        self.dll.DLLTempGood(ct.c_uint32(self.board_number), ct.c_uint32(channel))
 
     def TicksTimestamp(self) -> int:
         ticks = self.dll.DLLTicksTimestamp()
@@ -332,7 +325,4 @@ class VisCamera(ICamera):
         return bool(success)
 
     def WriteLongS0(self, val: int, offset: int) -> None:
-        success = self.dll.DLLWriteLongS0(ct.c_uint32(self.board_number),
-                                          ct.c_uint32(val),
-                                          ct.c_uint32(offset))
-        return print('set dat ' + str(bool(success)))
+        self.dll.DLLWriteLongS0(ct.c_uint32(self.board_number), ct.c_uint32(val), ct.c_uint32(offset))

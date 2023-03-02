@@ -17,36 +17,24 @@ help-sh:
 .PHONY: test
 ## Run tests
 test:
-	@echo running test suite
-	@poetry run pytest --cov=. tests
+	poetry run pytest --cov=. tests
 
 .PHONY: fmt
 ## Format as much as possible
 fmt:
-	@echo running pre-commit hooks
-	@poetry run pre-commit run --all-files ||:
-	@echo running ruff
-	@poetry run ruff --fix-only . ||:
-	@echo running black
-	@poetry run black .
-	@echo running isort
-	@poetry run isort .
+	poetry run pre-commit run --all-files ||:
+	poetry run ruff --fix-only . ||:
+	poetry run black .
+	poetry run isort .
 
 .PHONY: lint
 ## Lint the project
 lint:
-	@echo running pre-commit hooks
-	@poetry run pre-commit run --all-files
-	@echo running ruff
-	@poetry run ruff .
-	@echo running black
-	@poetry run black --check .
-	@echo running isort
-	@poetry run isort --check-only .
-	@echo running mypy
-	@poetry run mypy
-	@echo running deptry
-	@poetry run deptry .
+	poetry run pre-commit run --all-files
+	poetry run ruff .
+	poetry run black --check .
+	poetry run isort --check-only .
+	poetry run deptry .
 
 .PHONY: install
 ## Install the project and development environment

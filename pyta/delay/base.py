@@ -11,7 +11,6 @@ class AbstractQObject(sip.wrappertype, abc.ABCMeta):
 
 
 class IDelay(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
-
     move_finished = QtCore.pyqtSignal(bool)
     connection_closed = QtCore.pyqtSignal()
     connection_opened = QtCore.pyqtSignal()
@@ -22,8 +21,7 @@ class IDelay(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
 
     @abc.abstractmethod
     def __str__(self) -> str:
-        """Display name of the delay hardware
-        """
+        """Display name of the delay hardware"""
 
     @QtCore.pyqtSlot()
     def initialise(self) -> None:
@@ -41,24 +39,20 @@ class IDelay(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
     @property
     @abc.abstractmethod
     def tmax(self) -> float:
-        """Maximum time point permitted
-        """
+        """Maximum time point permitted"""
 
     @property
     @abc.abstractmethod
     def tmin(self) -> float:
-        """Maximum time point permitted
-        """
+        """Maximum time point permitted"""
 
     @abc.abstractmethod
     def _connect(self) -> None:
-        """Connect to and initialise the delay hardware
-        """
+        """Connect to and initialise the delay hardware"""
 
     @abc.abstractmethod
     def _disconnect(self) -> None:
-        """Disconnect from the delay hardware
-        """
+        """Disconnect from the delay hardware"""
 
     @QtCore.pyqtSlot(float)
     def move_to(self, time_point_ps: float) -> None:
@@ -68,18 +62,15 @@ class IDelay(QtCore.QObject, abc.ABC, metaclass=AbstractQObject):
     @QtCore.pyqtSlot()
     @abc.abstractmethod
     def home(self) -> None:
-        """Move to the home position
-        """
+        """Move to the home position"""
 
     @abc.abstractmethod
     def check_times(self, time_points: np.ndarray) -> bool:
-        """Return True if every time in ``times`` lies within the valid range
-        """
+        """Return True if every time in ``times`` lies within the valid range"""
 
     @abc.abstractmethod
     def check_time(self, time_point: float) -> bool:
-        """Return True if ``time`` lies within the valid range
-        """
+        """Return True if ``time`` lies within the valid range"""
 
     @staticmethod
     def convert_ps_to_mm(time_ps: float) -> float:
