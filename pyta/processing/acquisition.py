@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import numpy as np
-from PyQt6 import QtCore
+from PyQt5 import QtCore
 
 from pyta.processing.base import AcquisitionProcessingMixin
 from pyta.processing.models import AcquisitionData, AcquisitionOnOffData, LinearPixelCorrection

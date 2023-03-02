@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import abc
 
 import numpy as np
-from PyQt6 import QtCore, sip
+from PyQt5 import QtCore, sip
 
 
 class AbstractQObject(sip.wrappertype, abc.ABCMeta):

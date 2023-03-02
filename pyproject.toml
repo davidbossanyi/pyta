@@ -5,12 +5,12 @@ description = "Desktop App for Transient Absorption Spectroscopy Systems"
 authors = ["David Bossanyi <22292532+davidbossanyi@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-pyqt6 = "^6.4.2"
+python = "^3.8"
 numpy = "^1.24.2"
 h5py = "^3.8.0"
 pyqtgraph = "^0.13.1"
 pandas = "^1.5.3"
+pyqt5 = "^5.15.9"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.2.1"

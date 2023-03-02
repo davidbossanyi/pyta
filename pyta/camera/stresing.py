@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes as ct
 from typing import Any
 

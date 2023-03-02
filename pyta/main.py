@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import sys
 import os
 
 import pandas as pd
-from PyQt6 import QtGui, QtCore, QtWidgets
-from PyQt6.QtCore import pyqtSlot
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtCore import pyqtSlot
 
 from pyta.processing.models import AcquisitionData
 from pyta.ui.gui import Ui_pyTAgui as pyTAgui

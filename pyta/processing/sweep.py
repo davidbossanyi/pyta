@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 import numpy as np
@@ -5,7 +7,7 @@ import os
 import h5py
 import datetime as dt
 
-from PyQt6 import QtCore
+from PyQt5 import QtCore
 
 
 class Sweep(QtCore.QObject):
