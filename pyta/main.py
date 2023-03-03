@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 import pyqtgraph as pg
@@ -15,6 +17,7 @@ from pyta.delay.virtual import VirtualDelay as Delay
 from pyta.processing.acquisition import Acquisition
 from pyta.processing.models import AcquisitionData
 from pyta.processing.sweep import Sweep
+from pyta.settings.user import TimePointDistribution, UserSettings
 from pyta.ui.gui import Ui_pyTAgui as pyTAgui
 
 pg.setConfigOption("background", "w")
@@ -45,6 +48,10 @@ class Application(QtWidgets.QMainWindow):
         self.ui.tabs.setCurrentIndex(0)
         self.ui.diagnostics_tab.setEnabled(False)
         self.ui.acquisition_tab.setEnabled(False)
+
+        self.settings_dir = Path.home() / ".pyta"
+        self.settings_file = self.settings_dir / "userSettings.json"
+        self.user_settings = self.load_user_settings()
 
         self.camera_connected = False
         self.camera: ICamera = Camera()
@@ -111,6 +118,18 @@ class Application(QtWidgets.QMainWindow):
 
         self.write_app_status("application launched", colour="blue")
 
+    def load_user_settings(self) -> UserSettings:
+        self.settings_dir.mkdir(parents=True, exist_ok=True)
+        if self.settings_file.exists():
+            user_settings = UserSettings.parse_file(self.settings_file)
+        else:
+            user_settings = UserSettings()
+        return user_settings
+
+    def save_user_settings(self) -> None:
+        with open(self.settings_file, "w") as fp:
+            json.dump(json.loads(self.user_settings.json(by_alias=True)), fp, indent=2)
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         if self.safe_to_exit:
             self.camera_thread.deleteLater()
@@ -119,6 +138,7 @@ class Application(QtWidgets.QMainWindow):
             self.delay.deleteLater()
             self.processing_thread.deleteLater()
             self.save_thread.deleteLater()
+            self.save_user_settings()
             event.accept()
         else:
             event.ignore()
@@ -138,8 +158,8 @@ class Application(QtWidgets.QMainWindow):
         self.ui.d_use_ir_gain.setEnabled(False)
         self.ui.d_display_mode_spectra.addItem("Probe")
         self.ui.d_display_mode_spectra.addItem("Reference")
-        self.ui.a_distribution_dd.addItem("Exponential")
-        self.ui.a_distribution_dd.addItem("Linear")
+        self.ui.a_distribution_dd.addItem(TimePointDistribution.LINEAR.name.title())
+        self.ui.a_distribution_dd.addItem(TimePointDistribution.EXPONENTIAL.name.title())
         self.ui.h_camera_dd.addItem(str(self.camera))
         self.ui.h_delay_dd.addItem(str(self.delay))
         # progress bars
@@ -151,44 +171,43 @@ class Application(QtWidgets.QMainWindow):
         self.ui.a_use_cutoff.toggle()
         self.ui.a_plot_log_t_cb.setChecked(False)
         self.ui.a_plot_log_t_cb.setEnabled(False)
-
-        self.ui.d_use_linear_corr.setChecked(False)
-        self.ui.d_use_reference.setChecked(True)
-
-        self.ui.a_use_cutoff.setChecked(True)
-        self.ui.a_cutoff_pixel_low.setValue(30)
-        self.ui.a_cutoff_pixel_high.setValue(1000)
-        self.ui.d_cutoff_pixel_low.setValue(30)
-        self.ui.d_cutoff_pixel_high.setValue(1000)
-        self.ui.a_use_calib.setChecked(True)
-        self.ui.a_calib_pixel_low.setValue(200)
-        self.ui.a_calib_pixel_high.setValue(800)
-        self.ui.a_calib_wave_low.setValue(400)
-        self.ui.a_calib_wave_high.setValue(700)
-        self.ui.d_calib_pixel_low.setValue(200)
-        self.ui.d_calib_pixel_high.setValue(800)
-        self.ui.d_calib_wave_low.setValue(400)
-        self.ui.d_calib_wave_high.setValue(700)
-        self.ui.a_delay_t0.setValue(0)
-        self.ui.d_delay_t0.setValue(0)
+        # from user settings
+        self.ui.d_use_linear_corr.setChecked(self.user_settings.use_linear_corr)
+        self.ui.d_use_reference.setChecked(self.user_settings.use_reference)
+        self.ui.a_use_cutoff.setChecked(self.user_settings.use_cutoff)
+        self.ui.a_cutoff_pixel_low.setValue(self.user_settings.cutoff_pixel_low)
+        self.ui.a_cutoff_pixel_high.setValue(self.user_settings.cutoff_pixel_high)
+        self.ui.d_cutoff_pixel_low.setValue(self.user_settings.cutoff_pixel_low)
+        self.ui.d_cutoff_pixel_high.setValue(self.user_settings.cutoff_pixel_high)
+        self.ui.a_use_calib.setChecked(self.user_settings.use_calibration)
+        self.ui.a_calib_pixel_low.setValue(self.user_settings.calibration_pixel_low)
+        self.ui.a_calib_pixel_high.setValue(self.user_settings.calibration_pixel_high)
+        self.ui.a_calib_wave_low.setValue(self.user_settings.calibration_wavelength_low)
+        self.ui.a_calib_wave_high.setValue(self.user_settings.calibration_wavelength_high)
+        self.ui.d_calib_pixel_low.setValue(self.user_settings.calibration_pixel_low)
+        self.ui.d_calib_pixel_high.setValue(self.user_settings.calibration_pixel_high)
+        self.ui.d_calib_wave_low.setValue(self.user_settings.calibration_wavelength_low)
+        self.ui.d_calib_wave_high.setValue(self.user_settings.calibration_wavelength_high)
+        self.ui.a_delay_t0.setValue(self.user_settings.delay_time_zero)
+        self.ui.d_delay_t0.setValue(self.user_settings.delay_time_zero)
         self.ui.a_delaytype_dd.setCurrentIndex(0)
-        self.ui.a_distribution_dd.setCurrentIndex(0)
-        self.ui.a_tstart_sb.setValue(-5)
-        self.ui.a_tend_sb.setValue(100)
-        self.ui.a_num_tpoints_sb.setValue(100)
-        self.ui.a_num_shots.setValue(200)
-        self.ui.a_num_sweeps.setValue(500)
+        self.ui.a_distribution_dd.setCurrentIndex(self.user_settings.time_point_distribution.value)
+        self.ui.a_tstart_sb.setValue(self.user_settings.start_time)
+        self.ui.a_tend_sb.setValue(self.user_settings.end_time)
+        self.ui.a_num_tpoints_sb.setValue(self.user_settings.num_points)
+        self.ui.a_num_shots.setValue(self.user_settings.num_shots)
+        self.ui.a_num_sweeps.setValue(self.user_settings.num_sweeps)
         self.ui.d_display_mode_spectra.setCurrentIndex(0)
-        self.ui.d_use_ref_manip.setChecked(True)
-        self.ui.d_refman_horiz_offset.setValue(0)
-        self.ui.d_refman_scale_center.setValue(250)
-        self.ui.d_refman_scale_factor.setValue(1)
-        self.ui.d_refman_vertical_offset.setValue(0)
-        self.ui.d_refman_vertical_stretch.setValue(1)
-        self.ui.d_threshold_pixel.setValue(0)
-        self.ui.d_threshold_value.setValue(15000)
-        self.ui.d_time.setValue(100)
-        self.ui.d_jogstep_sb.setValue(0.01)
+        self.ui.d_use_ref_manip.setChecked(self.user_settings.use_reference_manipulation)
+        self.ui.d_refman_horiz_offset.setValue(self.user_settings.refman_horiz_offset)
+        self.ui.d_refman_scale_center.setValue(self.user_settings.refman_scale_center)
+        self.ui.d_refman_scale_factor.setValue(self.user_settings.refman_scale_factor)
+        self.ui.d_refman_vertical_offset.setValue(self.user_settings.refman_vertical_offset)
+        self.ui.d_refman_vertical_stretch.setValue(self.user_settings.refman_vertical_stretch)
+        self.ui.d_threshold_pixel.setValue(self.user_settings.threshold_pixel)
+        self.ui.d_threshold_value.setValue(self.user_settings.threshold_value)
+        self.ui.d_time.setValue(self.user_settings.time)
+        self.ui.d_jogstep_sb.setValue(self.user_settings.time_jog_step)
         self.ui.d_use_linear_corr.setChecked(False)
 
     def setup_gui_connections(self) -> None:
