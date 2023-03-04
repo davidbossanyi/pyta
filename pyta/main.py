@@ -127,6 +127,33 @@ class Application(QtWidgets.QMainWindow):
         return user_settings
 
     def save_user_settings(self) -> None:
+        self.user_settings.use_linear_corr = self.ui.d_use_linear_corr.isChecked()
+        self.user_settings.use_reference = self.ui.d_use_reference.isChecked()
+        self.user_settings.use_cutoff = self.use_cutoff
+        self.user_settings.cutoff_pixel_low = self.ui.a_cutoff_pixel_low.value()
+        self.user_settings.cutoff_pixel_high = self.ui.a_cutoff_pixel_high.value()
+        self.user_settings.use_calibration = self.use_calib
+        self.user_settings.calibration_pixel_low = self.ui.a_calib_pixel_low.value()
+        self.user_settings.calibration_pixel_high = self.ui.a_calib_pixel_high.value()
+        self.user_settings.calibration_wavelength_low = self.ui.a_calib_wave_low.value()
+        self.user_settings.calibration_wavelength_high = self.ui.a_calib_wave_high.value()
+        self.user_settings.delay_time_zero = self.ui.a_delay_t0.value()
+        self.user_settings.time_point_distribution = TimePointDistribution(self.ui.a_distribution_dd.currentIndex())
+        self.user_settings.start_time = self.ui.a_tstart_sb.value()
+        self.user_settings.end_time = self.ui.a_tend_sb.value()
+        self.user_settings.num_points = self.ui.a_num_tpoints_sb.value()
+        self.user_settings.num_shots = self.num_shots
+        self.user_settings.num_sweeps = self.num_sweeps
+        self.user_settings.use_reference_manipulation = self.ui.d_use_ref_manip.isChecked()
+        self.user_settings.refman_horiz_offset = self.ui.d_refman_horiz_offset.value()
+        self.user_settings.refman_scale_center = self.ui.d_refman_scale_center.value()
+        self.user_settings.refman_scale_factor = self.ui.d_refman_scale_factor.value()
+        self.user_settings.refman_vertical_offset = self.ui.d_refman_vertical_offset.value()
+        self.user_settings.refman_vertical_stretch = self.ui.d_refman_vertical_stretch.value()
+        self.user_settings.threshold_pixel = self.ui.d_threshold_pixel.value()
+        self.user_settings.threshold_value = self.ui.d_threshold_value.value()
+        self.user_settings.time = self.ui.d_time.value()
+        self.user_settings.time_jog_step = self.ui.d_jogstep_sb.value()
         with open(self.settings_file, "w") as fp:
             json.dump(json.loads(self.user_settings.json(by_alias=True)), fp, indent=2)
 
