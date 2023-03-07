@@ -115,6 +115,8 @@ class Application(QtWidgets.QMainWindow):
 
         self.stop_request = False
         self.diagnostics_on = False
+        
+        self.ui.d_threshold_pixel.setMaximum(self.camera.total_pixels)
 
         self.write_app_status("application launched", colour="blue")
 
@@ -1209,7 +1211,7 @@ class Application(QtWidgets.QMainWindow):
         self.stop_request = True
 
     def exec_d_move_to_time(self) -> None:
-        self.move_delay_requested.emit()
+        self.move_delay_requested.emit(self.ui.d_time.value())
 
 
 def main() -> None:
