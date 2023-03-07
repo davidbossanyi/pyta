@@ -115,7 +115,7 @@ class Application(QtWidgets.QMainWindow):
 
         self.stop_request = False
         self.diagnostics_on = False
-        
+
         self.ui.d_threshold_pixel.setMaximum(self.camera.total_pixels)
 
         self.write_app_status("application launched", colour="blue")
