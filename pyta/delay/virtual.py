@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
+from PyQt5 import QtCore
 
 from pyta.delay.base import IDelay
 
@@ -20,15 +21,16 @@ class VirtualDelay(IDelay):
         return self._time_zero - 50.0
 
     def _connect(self) -> None:
-        time.sleep(5)
+        time.sleep(1)
 
     def _disconnect(self) -> None:
-        time.sleep(1)
+        time.sleep(0.5)
 
     def _move(self, time_point_ps: float) -> bool:
         time.sleep(1)
         return False
 
+    @QtCore.pyqtSlot()
     def home(self) -> None:
         time.sleep(5)
 

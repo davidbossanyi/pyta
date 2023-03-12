@@ -71,7 +71,7 @@ class Sweep(QtCore.QObject):
         save_data = np.vstack((np.hstack((0, waves)), np.hstack((self.times.T, self.current_data))))
 
         with h5py.File(self.hdf5_filename, "a") as hdf5_file:
-            dset = hdf5_file.create_dataset("Sweeps/Sweep_" + str(self.sweep_index), data=save_data)
+            dset = hdf5_file.create_dataset(f"Sweeps/Sweep_{self.sweep_index}", data=save_data)
             dset.attrs["date"] = str(dt.datetime.now().date()).encode("ascii", "ignore")
             dset.attrs["time"] = str(dt.datetime.now().time()).encode("ascii", "ignore")
 

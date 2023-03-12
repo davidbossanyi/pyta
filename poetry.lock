@@ -636,6 +636,21 @@ files = [
 ]
 
 [[package]]
+name = "pyqt5-stubs"
+version = "5.15.6.0"
+description = "PEP561 stub files for the PyQt5 framework"
+category = "dev"
+optional = false
+python-versions = ">= 3.5"
+files = [
+    {file = "PyQt5-stubs-5.15.6.0.tar.gz", hash = "sha256:91270ac23ebf38a1dc04cd97aa852cd08af82dc839100e5395af1447e3e99707"},
+    {file = "PyQt5_stubs-5.15.6.0-py3-none-any.whl", hash = "sha256:7fb8177c72489a8911f021b7bd7c33f12c87f6dba92dcef3fdcdb5d9400f0f3f"},
+]
+
+[package.extras]
+dev = ["mypy (==0.930)", "pytest", "pytest-xvfb"]
+
+[[package]]
 name = "pyqtgraph"
 version = "0.13.1"
 description = "Scientific Graphics and GUI Library for Python"
@@ -854,4 +869,4 @@ test = ["covdefaults (>=2.2.2)", "coverage (>=7.1)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "5d419916ee201af5426a6a8c33157c3004c8118a63ae250f6c21661e37353f12"
+content-hash = "d9e8a7d9676caaf3f24556b84c2a713f13f9e055e9fe83c6967455a0d55998d1"

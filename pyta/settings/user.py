@@ -38,3 +38,4 @@ class UserSettings(BaseModel):
     threshold_value: int = Field(15000, alias="triggerThreshold")
     time: float = Field(0.0, alias="currentDelayTime")
     time_jog_step: float = Field(0.01, alias="timeJogStep")
+    dc_shot_factor: float = Field(1.0, alias="darkCorrectionShotFactor")

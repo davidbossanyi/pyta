@@ -30,15 +30,15 @@ class VirtualCamera(ICamera):
         return self._first_pixel
 
     def _connect(self) -> None:
-        time.sleep(5)
+        time.sleep(1)
 
     def _read(self) -> None:
-        self._probe = np.random.normal(size=(self.number_of_scans, self.total_pixels))
-        self._reference = np.random.normal(size=(self.number_of_scans, self.total_pixels))
-        time.sleep(1)
+        self._probe = np.random.normal(loc=1000, scale=50, size=(self.number_of_scans, self.total_pixels))
+        self._reference = np.random.normal(loc=1000, scale=50, size=(self.number_of_scans, self.total_pixels))
+        time.sleep(0.5)
 
     def _disconnect(self) -> None:
-        time.sleep(1)
+        time.sleep(0.5)
 
     def _overflow(self) -> None:
         pass

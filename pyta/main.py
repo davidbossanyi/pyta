@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +24,8 @@ from pyta.ui.gui import Ui_pyTAgui as pyTAgui
 pg.setConfigOption("background", "w")
 pg.setConfigOption("foreground", "k")
 
+warnings.filterwarnings(action="ignore", category=RuntimeWarning, module="numpy")
+
 
 class Application(QtWidgets.QMainWindow):
     camera_connection_requested = QtCore.pyqtSignal()
@@ -40,7 +43,7 @@ class Application(QtWidgets.QMainWindow):
 
     move_delay_requested = QtCore.pyqtSignal(float)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ui = pyTAgui()
         self.ui.setupUi(self)
@@ -49,10 +52,36 @@ class Application(QtWidgets.QMainWindow):
         self.ui.diagnostics_tab.setEnabled(False)
         self.ui.acquisition_tab.setEnabled(False)
 
+        # user settings
         self.settings_dir = Path.home() / ".pyta"
         self.settings_file = self.settings_dir / "userSettings.json"
         self.user_settings = self.load_user_settings()
 
+        # set internal variables from user settings
+        self.num_shots = self.user_settings.num_shots
+        self.num_sweeps = self.user_settings.num_sweeps
+        self.dcshotfactor = self.user_settings.dc_shot_factor
+        self.cutoff = [self.user_settings.cutoff_pixel_low, self.user_settings.cutoff_pixel_high]
+        self.use_cutoff = self.user_settings.use_cutoff
+        self.threshold = [self.user_settings.threshold_pixel, self.user_settings.threshold_value]
+        self.refman = [
+            self.user_settings.refman_horiz_offset,
+            self.user_settings.refman_scale_center,
+            self.user_settings.refman_scale_factor,
+            self.user_settings.refman_vertical_offset,
+            self.user_settings.refman_vertical_stretch,
+        ]
+        self.calib = [
+            self.user_settings.calibration_pixel_low,
+            self.user_settings.calibration_pixel_high,
+            self.user_settings.calibration_wavelength_low,
+            self.user_settings.calibration_wavelength_high,
+        ]
+        self.use_calib = self.user_settings.use_calibration
+        self.d_time = self.user_settings.time
+        self.d_jogstep = self.user_settings.time_jog_step
+
+        # camera
         self.camera_connected = False
         self.camera: ICamera = Camera()
         self.camera_thread = QtCore.QThread()
@@ -66,9 +95,7 @@ class Application(QtWidgets.QMainWindow):
         self.use_ir_gain = False
         self.use_logscale = False
 
-        self.filename = ""
-        self.filepath = os.path.expanduser("~")
-
+        # delay
         self.delay_connected = False
         self.delay: IDelay = Delay(0.0)
         self.delay_thread = QtCore.QThread()
@@ -79,29 +106,70 @@ class Application(QtWidgets.QMainWindow):
         self.delay.connection_closed.connect(self.post_delay_disconnected)
         self.move_delay_requested.connect(self.delay.move_to)
 
+        # plots
         self.timeunits = "ps"
         self.xlabel = "Wavelength / Pixel"
-        self.datafolder = os.path.join(os.path.expanduser("~"), "Documents")
-        self.timefile_folder = os.path.join(os.path.expanduser("~"), "Documents")
+        self.create_plots()
+        self.probe_error_region = pg.FillBetweenItem(brush=(255, 0, 0, 50))
+        self.ref_error_region = pg.FillBetweenItem(brush=(0, 0, 255, 50))
+        self.time_pixel = 0
+        self.kinetics_pixel = 0
+        self.time_marker = pg.InfiniteLine()
+        self.wavelength_marker = pg.InfiniteLine()
+
+        self.a_lost_shot_graph_data: pg.PlotDataItem = self.ui.a_last_shot_graph.plotItem.plot([], pen="b")
+        self.a_spectra_graph_data: pg.PlotDataItem = self.ui.a_spectra_graph.plotItem.plot([], pen="r")
+        self.a_kinetic_graph_data_current: pg.PlotDataItem = self.ui.a_kinetic_graph.plotItem.plot(
+            [], pen="c", symbol="s", symbolPen="c", symbolBrush=None, symbolSize=4
+        )
+        self.a_kinetic_graph_data_average: pg.PlotDataItem = self.ui.a_kinetic_graph.plotItem.plot(
+            [], pen="b", symbol="s", symbolPen="b", symbolBrush=None, symbolSize=4
+        )
+
+        self.d_trigger_graph_data: pg.PlotDataItem = self.ui.d_trigger_graph.plotItem.plot([], pen=None, symbol="o")
+        self.d_error_graph_probe_data: pg.PlotDataItem = self.ui.d_error_graph.plotItem.plot([], pen="r", fillBrush="r")
+        self.d_error_graph_ref_data: pg.PlotDataItem = self.ui.d_error_graph.plotItem.plot([], pen="b", fillBrush="b")
+        self.d_error_graph_dtt_data: pg.PlotDataItem = self.ui.d_error_graph.plotItem.plot([], pen="g", fillBrush="g")
+        self.d_lost_shot_graph_data: pg.PlotDataItem = self.ui.d_last_shot_graph.plotItem.plot([], pen="b")
+        self.d_probe_ref_graph_probe_data: pg.PlotDataItem = self.ui.d_probe_ref_graph.plotItem.plot([], pen="r")
+        self.d_probe_ref_graph_ref_data: pg.PlotDataItem = self.ui.d_probe_ref_graph.plotItem.plot([], pen="b")
+
+        self.ui.d_probe_ref_graph.addItem(self.probe_error_region)
+        self.ui.d_probe_ref_graph.addItem(self.ref_error_region)
+
+        # folders and files
+        self.datafolder = os.path.expanduser("~")
+        self.timefile_folder = os.path.join(os.path.expanduser("~"))
+        self.timefile = "timefile.tf"
+        self.timefiles: list[str] = []
+        self.filename = "newfile"
+        self.filepath = os.path.join(self.datafolder, self.filename)
+        self.update_filepath()
+
+        # gui values and connections
         self.initialize_gui_values()
         self.setup_gui_connections()
-        self.metadata = {}
+
+        # initialize internal variables - state
         self.idle = True
         self.finished_acquisition = False
         self.safe_to_exit = True
-        self.initialise_gui()
-        self.show()
-
-        self.use_timefile = self.ui.a_timefile_cb.isChecked()
-        self.times = np.array([0.0])
         self.tau_flip_request = False
+        self.stop_request = False
+        self.diagnostics_on = False
 
-        self.probe_error_region = pg.FillBetweenItem(brush=(255, 0, 0, 50))
-        self.ref_error_region = pg.FillBetweenItem(brush=(0, 0, 255, 50))
+        # initialize internal variables - gui components
+        self.use_timefile = self.ui.a_timefile_cb.isChecked()
+        self.timestep = 0
+        self.metadata: dict[str, str | int | float] = {}
 
-        self.plot_waves = np.linspace(0, self.camera.valid_pixels - 1, self.camera.valid_pixels)
+        # initialize internal variables - data
+        self.times = np.array([0.0])
         self.plot_times = self.times
+        self.waves = self.pixels_to_waves()
+        self.plot_waves = np.linspace(0, self.camera.valid_pixels - 1, self.camera.valid_pixels)
 
+        # data acquisition
         self.acquisition = Acquisition()
         self.processing_thread = QtCore.QThread()
         self.acquisition.moveToThread(self.processing_thread)
@@ -109,15 +177,13 @@ class Application(QtWidgets.QMainWindow):
         self.acquisition_background_processing_requested.connect(self.acquisition.process_background)
         self.current_data: AcquisitionData | None = None
         self.current_sweep: Sweep | None = None
-        self.timestep = 0
-
         self.save_thread = QtCore.QThread()
 
-        self.stop_request = False
-        self.diagnostics_on = False
-
+        # set some sensible limits to gui components based on runtime info
         self.ui.d_threshold_pixel.setMaximum(self.camera.total_pixels)
 
+        # launch
+        self.initialise_gui()
         self.write_app_status("application launched", colour="blue")
 
     def load_user_settings(self) -> UserSettings:
@@ -413,6 +479,7 @@ class Application(QtWidgets.QMainWindow):
             self.safe_to_exit = True
         self.ui.acquisition_tab.setEnabled(False)
         self.ui.diagnostics_tab.setEnabled(False)
+        self.delay_thread.quit()
 
     @QtCore.pyqtSlot()
     def h_update_delay_status(self, message: str) -> None:
@@ -488,18 +555,16 @@ class Application(QtWidgets.QMainWindow):
         self.display_times()
 
     def exec_timefile_folder_btn(self) -> None:
-        self.timefile = QtWidgets.QFileDialog.getOpenFileName(
-            None, "Select TimeFile", self.timefile_folder, "TimeFiles (*.tf)"
-        )
+        timefile, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select TimeFile", self.timefile_folder, "TimeFiles (*.tf)")
         self.timefile_folder = os.path.dirname(self.timefile[0])
         if self.timefile_folder.endswith("/"):
             self.timefile_folder = self.timefile_folder[:-1]
-        self.timefile = os.path.basename(self.timefile[0])
+        self.timefile = os.path.basename(timefile)
         self.load_timefiles_to_list()
 
     def load_timefiles_to_list(self) -> None:
         self.ui.a_timefile_list.clear()
-        self.timefiles: list[str] = []
+        self.timefiles.clear()
         for file in os.listdir(self.timefile_folder):
             if file.endswith(".tf"):
                 self.timefiles.append(file)
@@ -652,7 +717,7 @@ class Application(QtWidgets.QMainWindow):
     def update_d_jogstep(self) -> None:
         self.d_jogstep = self.ui.d_jogstep_sb.value()
 
-    def append_history(self, message):
+    def append_history(self, message: str) -> None:
         self.ui.a_history.appendPlainText(message)
         self.ui.d_history.appendPlainText(message)
 
@@ -695,43 +760,8 @@ class Application(QtWidgets.QMainWindow):
 
     def create_plot_waves_and_times(self) -> None:
         self.set_waves_and_times_axes()
-
-        if not self.diagnostics_on:
-            self.plot_kinetic_avg = self.current_sweep.avg_data[:, self.kinetics_pixel]
-            self.plot_kinetic_current = self.current_sweep.current_data[:, self.kinetics_pixel]
-
-        if self.diagnostics_on is False:
-            self.plot_dtt = self.current_sweep.avg_data[:]
-
-        self.plot_ls = self.current_data.dtt[:]
-        self.plot_probe_shot_error = self.current_data.probe_shot_error[:]
-
-        if self.ui.d_use_reference.isChecked() is True:
-            self.plot_ref_shot_error = self.current_data.ref_shot_error[:]
-            self.plot_dtt_error = self.current_data.dtt_error[:]
-
-        self.plot_probe_on = self.current_data.probe_on[:]
-        self.plot_reference_on = self.current_data.reference_on[:]
-        self.plot_probe_on_array = self.current_data.probe_on_array[:]
-        self.plot_reference_on_array = self.current_data.reference_on_array[:]
-
-        if self.use_cutoff is True:
+        if self.use_cutoff:
             self.plot_waves = self.plot_waves[self.cutoff[0] : self.cutoff[1]]
-
-            if self.diagnostics_on is False:
-                self.plot_dtt = self.plot_dtt[:, self.cutoff[0] : self.cutoff[1]]
-
-            self.plot_ls = self.plot_ls[self.cutoff[0] : self.cutoff[1]]
-            self.plot_probe_shot_error = self.plot_probe_shot_error[self.cutoff[0] : self.cutoff[1]]
-
-            if self.ui.d_use_reference.isChecked() is True:
-                self.plot_ref_shot_error = self.plot_ref_shot_error[self.cutoff[0] : self.cutoff[1]]
-                self.plot_dtt_error = self.plot_dtt_error[self.cutoff[0] : self.cutoff[1]]
-
-            self.plot_probe_on = self.plot_probe_on[self.cutoff[0] : self.cutoff[1]]
-            self.plot_reference_on = self.plot_reference_on[self.cutoff[0] : self.cutoff[1]]
-            self.plot_probe_on_array = self.plot_probe_on_array[:, self.cutoff[0] : self.cutoff[1]]
-            self.plot_reference_on_array = self.plot_reference_on_array[:, self.cutoff[0] : self.cutoff[1]]
 
     def pixels_to_waves(self) -> np.ndarray:
         slope = (self.calib[3] - self.calib[2]) / (self.calib[1] - self.calib[0])
@@ -739,10 +769,16 @@ class Application(QtWidgets.QMainWindow):
         return np.linspace(0, self.camera.valid_pixels - 1, self.camera.valid_pixels) * slope + y_int
 
     def ls_plot(self) -> None:
-        self.ui.a_last_shot_graph.plotItem.plot(self.plot_waves, self.plot_ls, clear=True, pen="b")
+        plot_ls = self.current_data.dtt[:]
+        if self.use_cutoff:
+            plot_ls = plot_ls[self.cutoff[0] : self.cutoff[1]]
+        self.a_lost_shot_graph_data.setData(self.plot_waves, plot_ls)
 
     def top_plot(self) -> None:
-        self.ui.a_colourmap.setImage(self.plot_dtt, scale=(len(self.plot_waves) / len(self.times), 1))
+        plot_dtt = self.current_sweep.avg_data[:]
+        if self.use_cutoff:
+            plot_dtt = plot_dtt[:, self.cutoff[0] : self.cutoff[1]]
+        self.ui.a_colourmap.setImage(plot_dtt, scale=(len(self.plot_waves) / len(self.times), 1))
 
     def add_time_marker(self) -> None:
         finite_times = self.plot_times[np.isfinite(self.plot_times)]
@@ -751,20 +787,14 @@ class Application(QtWidgets.QMainWindow):
         )
         self.ui.a_kinetic_graph.addItem(self.time_marker)
         self.time_marker.sigPositionChangeFinished.connect(self.update_time_pixel)
-        self.time_marker_label = pg.InfLineLabel(
-            self.time_marker, text="{value:.2f}" + self.timeunits, movable=True, position=0.9
-        )
+        pg.InfLineLabel(self.time_marker, text=f"{self.time_marker.value():.2f}{self.timeunits}", movable=True, position=0.9)
         self.update_time_pixel()
 
     def update_time_pixel(self) -> None:
-        self.spectrum_time = self.time_marker.value()
-        self.time_pixel = np.where(
-            (self.plot_times - self.spectrum_time) ** 2 == min((self.plot_times - self.spectrum_time) ** 2)
-        )[0][0]
+        spectrum_time = self.time_marker.value()
+        self.time_pixel = np.where((self.plot_times - spectrum_time) ** 2 == min((self.plot_times - spectrum_time) ** 2))[0][0]
         if self.finished_acquisition:
-            self.create_plot_waves_and_times()
             self.spec_plot()
-        return
 
     def add_wavelength_marker(self) -> None:
         self.wavelength_marker = pg.InfiniteLine(
@@ -772,112 +802,97 @@ class Application(QtWidgets.QMainWindow):
         )
         self.ui.a_spectra_graph.addItem(self.wavelength_marker)
         self.wavelength_marker.sigPositionChangeFinished.connect(self.update_kinetics_wavelength)
-        self.wavelength_marker_label = pg.InfLineLabel(
-            self.wavelength_marker, text="{value:.2f}nm", movable=True, position=0.9
-        )
+        pg.InfLineLabel(self.wavelength_marker, text=f"{self.wavelength_marker.value():.2f}nm", movable=True, position=0.9)
         self.update_kinetics_wavelength()
 
     def update_kinetics_wavelength(self) -> None:
-        self.kinetics_wavelength = self.wavelength_marker.value()
+        kinetics_wavelength = self.wavelength_marker.value()
         self.kinetics_pixel = np.where(
-            (self.waves - self.kinetics_wavelength) ** 2 == min((self.waves - self.kinetics_wavelength) ** 2)
-        )[0][
-            0
-        ]  # self.waves rather than self.plot_waves?
+            (self.waves - kinetics_wavelength) ** 2 == min((self.waves - kinetics_wavelength) ** 2)
+        )[0][0]
         if self.finished_acquisition:
-            self.create_plot_waves_and_times()
             self.kin_plot()
 
     def kin_plot(self) -> None:
-        for item in self.ui.a_kinetic_graph.plotItem.listDataItems():
-            self.ui.a_kinetic_graph.plotItem.removeItem(item)
+        plot_kinetic_avg = self.current_sweep.avg_data[:, self.kinetics_pixel]
+        plot_kinetic_current = self.current_sweep.current_data[:, self.kinetics_pixel]
         if self.finished_acquisition:
-            self.ui.a_kinetic_graph.plotItem.plot(
-                self.plot_times,
-                self.plot_kinetic_avg,
-                pen="b",
-                symbol="s",
-                symbolPen="b",
-                symbolBrush=None,
-                symbolSize=4,
-                clear=False,
-            )
+            self.a_kinetic_graph_data_average.setData(self.plot_times, plot_kinetic_avg)
+            self.a_kinetic_graph_data_current.setData([])
         else:
+            self.a_kinetic_graph_data_current.setData(
+                self.plot_times[0 : self.timestep + 1], plot_kinetic_current[0 : self.timestep + 1]
+            )
             if self.current_sweep.sweep_index > 0:
-                self.ui.a_kinetic_graph.plotItem.plot(
-                    self.plot_times[0 : self.timestep + 1],
-                    self.plot_kinetic_current[0 : self.timestep + 1],
-                    pen="c",
-                    symbol="s",
-                    symbolPen="c",
-                    symbolBrush=None,
-                    symbolSize=4,
-                    clear=False,
-                )
-                self.ui.a_kinetic_graph.plotItem.plot(
-                    self.plot_times,
-                    self.plot_kinetic_avg,
-                    pen="b",
-                    symbol="s",
-                    symbolPen="b",
-                    symbolBrush=None,
-                    symbolSize=4,
-                    clear=False,
-                )
-            else:
-                self.ui.a_kinetic_graph.plotItem.plot(
-                    self.plot_times[0 : self.timestep + 1],
-                    self.plot_kinetic_current[0 : self.timestep + 1],
-                    pen="c",
-                    symbol="s",
-                    symbolPen="c",
-                    symbolBrush=None,
-                    symbolSize=4,
-                    clear=False,
-                )
+                self.a_kinetic_graph_data_average.setData(self.plot_times, plot_kinetic_avg)
 
     def spec_plot(self) -> None:
-        for item in self.ui.a_spectra_graph.plotItem.listDataItems():
-            self.ui.a_spectra_graph.plotItem.removeItem(item)
-        self.ui.a_spectra_graph.plotItem.plot(self.plot_waves, self.plot_dtt[self.time_pixel, :], pen="r", clear=False)
+        plot_dtt = self.current_sweep.avg_data[:]
+        if self.use_cutoff:
+            plot_dtt = plot_dtt[:, self.cutoff[0] : self.cutoff[1]]
+        self.a_spectra_graph_data.setData(self.plot_waves, plot_dtt[self.time_pixel, :])
 
     def d_error_plot(self) -> None:
-        self.ui.d_error_graph.plotItem.plot(
-            self.plot_waves, np.log10(self.plot_probe_shot_error), pen="r", clear=True, fillBrush="r"
-        )
-        if self.ui.d_use_reference.isChecked() is True:
-            self.ui.d_error_graph.plotItem.plot(
-                self.plot_waves, np.log10(self.plot_ref_shot_error), pen="g", clear=False, fillBrush="g"
-            )
-            self.ui.d_error_graph.plotItem.plot(
-                self.plot_waves, np.log10(self.plot_dtt_error), pen="b", clear=False, fillBrush="b"
-            )
+        plot_probe_shot_error = self.current_data.probe_shot_error[:]
+        if self.use_cutoff:
+            plot_probe_shot_error = plot_probe_shot_error[self.cutoff[0] : self.cutoff[1]]
+
+        self.d_error_graph_probe_data.setData(self.plot_waves, np.log10(plot_probe_shot_error))
+
+        if self.ui.d_use_reference.isChecked():
+            plot_ref_shot_error = self.current_data.ref_shot_error[:]
+            plot_dtt_shot_error = self.current_data.dtt_error[:]
+
+            if self.use_cutoff:
+                plot_ref_shot_error = plot_ref_shot_error[self.cutoff[0] : self.cutoff[1]]
+                plot_dtt_shot_error = plot_dtt_shot_error[self.cutoff[0] : self.cutoff[1]]
+
+            self.d_error_graph_ref_data.setData(self.plot_waves, np.log10(plot_ref_shot_error))
+            self.d_error_graph_dtt_data.setData(self.plot_waves, np.log10(plot_dtt_shot_error))
+
+        else:
+            self.d_error_graph_ref_data.setData([])
+            self.d_error_graph_dtt_data.setData([])
+
         self.ui.d_error_graph.plotItem.setYRange(-4, 1, padding=0)
 
     def d_trigger_plot(self) -> None:
-        self.ui.d_trigger_graph.plotItem.plot(
-            np.arange(self.num_shots), self.current_data.trigger, pen=None, symbol="o", clear=True
-        )
+        self.d_trigger_graph_data.setData(np.arange(self.num_shots), self.current_data.trigger)
 
     def d_probe_ref_plot(self) -> None:
-        for item in self.ui.d_probe_ref_graph.plotItem.listDataItems():
-            self.ui.d_probe_ref_graph.plotItem.removeItem(item)
-        probe_std = np.std(self.plot_probe_on_array, axis=0)
-        self.ui.d_probe_ref_graph.plotItem.plot(self.plot_waves, self.plot_probe_on, pen="r")
-        pcurve1 = pg.PlotDataItem(self.plot_waves, self.plot_probe_on - 2 * probe_std, pen="r")
-        pcurve2 = pg.PlotDataItem(self.plot_waves, self.plot_probe_on + 2 * probe_std, pen="r")
+        plot_probe_on = self.current_data.probe_on[:]
+        plot_reference_on = self.current_data.reference_on[:]
+        plot_probe_on_array = self.current_data.probe_on_array[:]
+        plot_reference_on_array = self.current_data.reference_on_array[:]
+
+        if self.use_cutoff:
+            plot_probe_on = plot_probe_on[self.cutoff[0] : self.cutoff[1]]
+            plot_reference_on = plot_reference_on[self.cutoff[0] : self.cutoff[1]]
+            plot_probe_on_array = plot_probe_on_array[:, self.cutoff[0] : self.cutoff[1]]
+            plot_reference_on_array = plot_reference_on_array[:, self.cutoff[0] : self.cutoff[1]]
+
+        probe_std = np.std(plot_probe_on_array, axis=0)
+        pcurve1 = pg.PlotDataItem(self.plot_waves, plot_probe_on - 2 * probe_std, pen="r")
+        pcurve2 = pg.PlotDataItem(self.plot_waves, plot_probe_on + 2 * probe_std, pen="r")
+        self.d_probe_ref_graph_probe_data.setData(self.plot_waves, plot_probe_on)
         self.probe_error_region.setCurves(pcurve1, pcurve2)
-        self.ui.d_probe_ref_graph.addItem(self.probe_error_region)
-        if self.ui.d_use_reference.isChecked() is True:
-            ref_std = np.std(self.plot_reference_on_array, axis=0)
-            self.ui.d_probe_ref_graph.plotItem.plot(self.plot_waves, self.plot_reference_on, pen="b")
-            rcurve1 = pg.PlotDataItem(self.plot_waves, self.plot_reference_on - 2 * ref_std, pen="b")
-            rcurve2 = pg.PlotDataItem(self.plot_waves, self.plot_reference_on + 2 * ref_std, pen="b")
+
+        if self.ui.d_use_reference.isChecked():
+            ref_std = np.std(plot_reference_on_array, axis=0)
+            rcurve1 = pg.PlotDataItem(self.plot_waves, plot_reference_on - 2 * ref_std, pen="b")
+            rcurve2 = pg.PlotDataItem(self.plot_waves, plot_reference_on + 2 * ref_std, pen="b")
+            self.d_probe_ref_graph_ref_data.setData(self.plot_waves, plot_reference_on)
             self.ref_error_region.setCurves(rcurve1, rcurve2)
-            self.ui.d_probe_ref_graph.addItem(self.ref_error_region)
+
+        else:
+            self.ref_error_region.setCurves(pg.PlotDataItem([]), pg.PlotDataItem([]))
+            self.d_probe_ref_graph_ref_data.setData([])
 
     def d_ls_plot(self) -> None:
-        self.ui.d_last_shot_graph.plotItem.plot(self.plot_waves, self.plot_ls, pen="b", clear=True)
+        plot_ls = self.current_data.dtt[:]
+        if self.use_cutoff:
+            plot_ls = plot_ls[self.cutoff[0] : self.cutoff[1]]
+        self.d_lost_shot_graph_data.setData(self.plot_waves, plot_ls)
 
     @staticmethod
     def message_box(text: str, info: str | None = None) -> int:
@@ -945,17 +960,17 @@ class Application(QtWidgets.QMainWindow):
         if not self.acquisition.data.high_trigger_std and not self.acquisition.data.high_dtt:
             self.current_sweep.add_current_data(dtt=self.current_data.dtt, time_point=self.timestep)
             self.create_plot_waves_and_times()
-            if self.ui.acquisition_tab.isVisible() is True:
+            if self.ui.acquisition_tab.isVisible():
                 self.ls_plot()
                 self.top_plot()
                 self.kin_plot()
                 self.spec_plot()
-            if self.ui.diagnostics_tab.isVisible() is True:
+            if self.ui.diagnostics_tab.isVisible():
                 self.d_ls_plot()
                 self.d_error_plot()
                 self.d_trigger_plot()
                 self.d_probe_ref_plot()
-            if self.stop_request is True:
+            if self.stop_request:
                 self.finish()
             if self.timestep == len(self.times) - 1:
                 self.post_sweep()
@@ -967,7 +982,7 @@ class Application(QtWidgets.QMainWindow):
                 self.move_delay_requested.emit(time)
                 self.acquire()
         else:
-            if self.stop_request is True:
+            if self.stop_request:
                 self.finish()
             self.append_history("retaking point")
             self.acquire()
@@ -988,10 +1003,15 @@ class Application(QtWidgets.QMainWindow):
         self.run()
 
     def exec_run_btn(self) -> None:
-        if self.ui.a_test_run_btn.isChecked() is True:
+        if self.ui.a_test_run_btn.isChecked():
             self.append_history("Launching Test Run!")
         else:
             self.append_history("Launching Run!")
+
+        self.a_kinetic_graph_data_average.setData([])
+        self.a_kinetic_graph_data_current.setData([])
+        self.a_spectra_graph_data.setData([])
+        self.a_lost_shot_graph_data.setData([])
 
         self.stop_request = False
         self.diagnostics_on = False
@@ -1015,6 +1035,8 @@ class Application(QtWidgets.QMainWindow):
         except AttributeError:
             pass
         self.add_wavelength_marker()
+
+        self.disconnect_data_signals()
 
         self.camera.acquisition_finished.connect(self.post_acquire_bgd)
 
@@ -1052,9 +1074,9 @@ class Application(QtWidgets.QMainWindow):
 
     def finish(self) -> None:
         self.idling()
+        self.disconnect_data_signals()
         self.finished_acquisition = True
         if not self.stop_request:
-            self.create_plot_waves_and_times()
             if self.ui.acquisition_tab.isVisible():
                 self.ls_plot()
                 self.top_plot()
@@ -1093,6 +1115,8 @@ class Application(QtWidgets.QMainWindow):
 
     @pyqtSlot()
     def post_sweep_saved(self) -> None:
+        if not self.ui.a_test_run_btn.isChecked():
+            self.save_thread.quit()
         self.current_sweep.next_sweep()
         if self.current_sweep.sweep_index == self.num_sweeps:
             self.finish()
@@ -1138,7 +1162,6 @@ class Application(QtWidgets.QMainWindow):
     @pyqtSlot()
     def d_post_acquisition_processing(self) -> None:
         self.current_data = self.acquisition.data
-
         self.create_plot_waves_and_times()
         self.d_ls_plot()
         self.d_error_plot()
@@ -1163,8 +1186,7 @@ class Application(QtWidgets.QMainWindow):
 
     @pyqtSlot()
     def d_post_background_processing(self) -> None:
-        self.delay.move_finished.connect(self.d_run)
-        self.move_delay_requested.emit(self.d_time)
+        self.d_run()
 
     def exec_d_run_btn(self) -> None:
         self.append_history("Launching Diagnostics!")
@@ -1181,6 +1203,8 @@ class Application(QtWidgets.QMainWindow):
             self.idling()
             return
 
+        self.disconnect_data_signals()
+
         self.camera.acquisition_finished.connect(self.d_post_acquire_bgd)
         self.acquisition.bgd_processing_finished.connect(self.d_post_background_processing)
         self.acquisition.processing_finished.connect(self.d_post_acquisition_processing)
@@ -1191,20 +1215,35 @@ class Application(QtWidgets.QMainWindow):
         self.append_history("Taking Background")
         self.d_acquire_bgd()
 
-    @pyqtSlot(bool)
-    def d_run(self, tflip: bool) -> None:
-        self.tau_flip_request = tflip
+    def d_run(self) -> None:
         self.camera.update_number_of_scans(self.num_shots)
-        self.camera.acquisition_finished.disconnect(self.d_post_acquire_bgd)
-        self.camera.acquisition_finished.connect(self.d_post_acquire)
 
-        self.delay.move_finished.disconnect(self.d_run)
+        try:
+            self.camera.acquisition_finished.disconnect()
+            self.delay.move_finished.disconnect()
+        except TypeError:
+            pass
+
+        self.camera.acquisition_finished.connect(self.d_post_acquire)
         self.delay.move_finished.connect(self.d_post_delay_moved)
+
+        self.move_delay_requested.emit(self.d_time)
 
         self.d_acquire()
 
+    def disconnect_data_signals(self) -> None:
+        try:
+            self.delay.move_finished.disconnect()
+            self.camera.acquisition_finished.disconnect()
+            self.acquisition.processing_finished.disconnect()
+            self.acquisition.bgd_processing_finished.disconnect()
+            self.delay.move_finished.disconnect()
+        except TypeError:
+            pass
+
     def d_finish(self) -> None:
         self.idling()
+        self.disconnect_data_signals()
         self.processing_thread.quit()
 
     def exec_d_stop_btn(self) -> None:
@@ -1214,18 +1253,13 @@ class Application(QtWidgets.QMainWindow):
         self.move_delay_requested.emit(self.ui.d_time.value())
 
 
-def main() -> None:
-    # create application
+def run() -> None:
     QtWidgets.QApplication.setStyle("Fusion")
     app = QtWidgets.QApplication(sys.argv)
-
     ex = Application()
     ex.show()
-    ex.create_plots()
-
-    # kill application
     sys.exit(app.exec())
 
 
 if __name__ == "__main__":
-    main()
+    run()
