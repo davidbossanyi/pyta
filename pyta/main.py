@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes as ct
 import json
 import os
 import sys
@@ -47,7 +48,7 @@ class Application(QtWidgets.QMainWindow):
         super().__init__()
         self.ui = pyTAgui()
         self.ui.setupUi(self)
-        self.setWindowIcon(QtGui.QIcon("assets/icon.png"))
+        self.setWindowIcon(QtGui.QIcon((Path(__file__).parent / "assets" / "icon.png").as_posix()))
         self.ui.tabs.setCurrentIndex(0)
         self.ui.diagnostics_tab.setEnabled(False)
         self.ui.acquisition_tab.setEnabled(False)
@@ -1254,6 +1255,7 @@ class Application(QtWidgets.QMainWindow):
 
 
 def run() -> None:
+    ct.windll.shell32.SetCurrentProcessExplicitAppUserModelID("pyTA")
     QtWidgets.QApplication.setStyle("Fusion")
     app = QtWidgets.QApplication(sys.argv)
     ex = Application()
