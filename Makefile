@@ -25,7 +25,6 @@ fmt:
 	poetry run pre-commit run --all-files ||:
 	poetry run ruff --fix-only . ||:
 	poetry run black .
-	poetry run isort .
 
 .PHONY: lint
 ## Lint the project
@@ -33,7 +32,7 @@ lint:
 	poetry run pre-commit run --all-files
 	poetry run ruff .
 	poetry run black --check .
-	poetry run isort --check-only .
+	poetry run mypy
 	poetry run deptry .
 
 .PHONY: install

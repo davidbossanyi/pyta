@@ -40,6 +40,9 @@ class VisCamera(ICamera):
         self.array = np.zeros((self.number_of_scans + 10, self.total_pixels * 2), dtype=np.dtype(np.int32))
         self._set_argtypes()
 
+    def __str__(self) -> str:
+        return "Stresing VIS"
+
     def update_number_of_scans(self, number_of_scans: int) -> None:
         self.number_of_scans = number_of_scans
         self.array = np.zeros((self.number_of_scans + 10, self.total_pixels * 2), dtype=np.dtype(np.int32))
@@ -122,10 +125,10 @@ class VisCamera(ICamera):
         self._construct_data_vectors()
 
     def _construct_data_vectors(self) -> None:
-        hilo_array = self.data.view(np.uint16)[:, 0 : self.total_pixels * 2]  # temp = shots x (2*pixels)
+        hilo_array = self.data.view(np.uint16)[:, 0 : self.total_pixels * 2]
         hilo_array = hilo_array.reshape(hilo_array.shape[0], 2, self.total_pixels)
-        self._probe = hilo_array[:, 0, :]  # pointers onto self.data
-        self._reference = hilo_array[:, 1, :]
+        self._probe = hilo_array[:, 0, :]  # type: ignore[assignment]
+        self._reference = hilo_array[:, 1, :]  # type: ignore[assignment]
 
     def _disconnect(self) -> None:
         self.CCDDrvExit()

@@ -13,23 +13,22 @@ pyta = 'pyta.main:run'
 [tool.poetry.dependencies]
 python = "^3.8"
 numpy = "^1.24.2"
-h5py = "^3.8.0"
-pyqtgraph = "^0.13.1"
+h5py = "^3.9.0"
+pyqtgraph = "^0.13.3"
 pyqt5 = "^5.15.9"
-pydantic = "^1.10.5"
+pydantic = "^1.10.11"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.2.1"
-pytest-cov = "^4.0.0"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
 pytest-qt = "^4.2.0"
 
 [tool.poetry.group.lint.dependencies]
-pre-commit = "^3.0.4"
-black = "^23.1.0"
-isort = "^5.12.0"
-ruff = "^0.0.247"
-mypy = "^1.0.1"
-deptry = "^0.8.0"
+pre-commit = "^3.3.3"
+black = "^23.3.0"
+ruff = "^0.0.277"
+mypy = "^1.4.1"
+deptry = "^0.12.0"
 pyqt5-stubs = "^5.15.6.0"
 
 [build-system]
@@ -53,6 +52,7 @@ extend-select = [
     "C90",
     "E",
     "F",
+    "I001",
     "RUF",
     "S",
     "T20",
@@ -70,14 +70,8 @@ ignore = [
 [tool.ruff.mccabe]
 max-complexity = 10
 
-
 [tool.black]
 line-length = 127
-
-[tool.isort]
-multi_line_output = 3
-line_length = 127
-profile = "black"
 
 [tool.coverage.run]
 omit = ["tests/*"]
@@ -92,3 +86,15 @@ files = [
 exclude = [
     "pyta/ui",
 ]
+
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "pyta.main"
+disable_error_code = ["union-attr"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true

@@ -70,7 +70,7 @@ class Acquisition(QtCore.QObject, AcquisitionProcessingMixin):
         data, trigger = self.separate_on_off(
             untrimmed_probe_array, probe_array, reference_array, trigger_pixel, trigger_threshold, tflip
         )
-        if self._use_bgd_subtraction:
+        if self._use_bgd_subtraction and self._background is not None:
             data = self.subtract_bgd(data, self._background)
         if reference_manipulation_factors:
             data = self.manipulate_reference(data, num_pixels, reference_manipulation_factors)
