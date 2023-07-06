@@ -25,7 +25,7 @@ from pyta.ui.gui import Ui_pyTAgui as pyTAgui
 pg.setConfigOption("background", "w")
 pg.setConfigOption("foreground", "k")
 
-warnings.filterwarnings(action="ignore", category=RuntimeWarning, module="numpy")
+warnings.filterwarnings(action="ignore", category=RuntimeWarning)
 
 
 class Application(QtWidgets.QMainWindow):
