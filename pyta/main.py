@@ -1255,7 +1255,7 @@ class Application(QtWidgets.QMainWindow):
 
 
 def run() -> None:
-    ct.windll.shell32.SetCurrentProcessExplicitAppUserModelID("pyTA")
+    ct.windll.shell32.SetCurrentProcessExplicitAppUserModelID("pyTA")  # type: ignore[attr-defined]
     QtWidgets.QApplication.setStyle("Fusion")
     app = QtWidgets.QApplication(sys.argv)
     ex = Application()

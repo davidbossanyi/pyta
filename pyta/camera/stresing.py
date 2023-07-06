@@ -11,7 +11,7 @@ from pyta.camera.base import ICamera
 class VisCamera(ICamera):
     def __init__(self, dll_path: str):
         super().__init__()
-        self.dll = ct.WinDLL(dll_path)
+        self.dll = ct.WinDLL(dll_path)  # type: ignore[attr-defined]
         self.board_number = 1  # PCI board index: 1 is VIS, 2 is NIR
         self.fft_lines = 64  # number of lines for binning if FFT sensor, 0 for NIR, 64 for VIS
         self.vfreq = 7  # vertical frequency for FFT sensor, given as 7 in examples from Stresing
