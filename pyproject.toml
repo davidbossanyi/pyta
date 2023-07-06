@@ -93,6 +93,10 @@ plugins = ["pydantic.mypy"]
 module = "pyta.main"
 disable_error_code = ["union-attr"]
 
+[[tool.mypy.overrides]]
+module = "pyta.camera.stresing"
+disable_error_code = ["attr-defined"]
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
