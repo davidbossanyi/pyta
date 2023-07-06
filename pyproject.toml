@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyta"
-version = "0.1.0"
+version = "1.0.0a0"
 description = "Desktop App for Transient Absorption Spectroscopy Systems"
 authors = ["David Bossanyi <22292532+davidbossanyi@users.noreply.github.com>"]
 packages = [
