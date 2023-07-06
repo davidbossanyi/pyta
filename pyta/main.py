@@ -7,6 +7,7 @@ import sys
 import warnings
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -146,6 +147,7 @@ class Application(QtWidgets.QMainWindow):
         self.filename = "newfile"
         self.filepath = os.path.join(self.datafolder, self.filename)
         self.update_filepath()
+        self.hdf5_conversion_filepath = os.path.expanduser("~")
 
         # gui values and connections
         self.initialize_gui_values()
@@ -182,6 +184,15 @@ class Application(QtWidgets.QMainWindow):
 
         # set some sensible limits to gui components based on runtime info
         self.ui.d_threshold_pixel.setMaximum(self.camera.total_pixels)
+
+        # file converter stuff
+        self.files_dict: dict[str, h5py.File] = {}
+        self.ui.file_up.clicked.connect(self.move_file_up)
+        self.ui.file_down.clicked.connect(self.move_file_down)
+        self.ui.delete_button.clicked.connect(self.delete_file)
+        self.ui.load_button.clicked.connect(self.load_data)
+        self.ui.folder_browser.clicked.connect(self.get_save_folder)
+        self.ui.convert_button.clicked.connect(self.convert)
 
         # launch
         self.initialise_gui()
@@ -1252,6 +1263,115 @@ class Application(QtWidgets.QMainWindow):
 
     def exec_d_move_to_time(self) -> None:
         self.move_delay_requested.emit(self.ui.d_time.value())
+
+    def write_console(self, message: str) -> None:
+        self.ui.console.appendPlainText(message)
+
+    def load_data(self) -> None:
+        ok = True
+        for index in range(self.ui.file_list.count()):
+            filepath = self.ui.file_list.item(index).text()
+            try:
+                f = h5py.File(filepath, "r")
+                self.files_dict[filepath] = f
+                self.write_console(f"loaded file <{os.path.basename(os.path.normpath(filepath))}>")
+            except ValueError:
+                self.write_app_status(f"unable to read file {filepath}", "red")
+                ok = False
+        if ok:
+            self.write_app_status("succesfully read all files", "green", timeout=5000)
+
+    def get_save_folder(self) -> None:
+        if self.files_dict:
+            fpath = os.path.dirname(os.path.normpath(list(self.files_dict.keys())[0]))
+        else:
+            fpath = os.path.join(os.path.expanduser("~"), "Documents")
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose folder to save data", os.path.dirname(fpath))
+        self.hdf5_conversion_filepath = os.path.normpath(directory)
+        self.ui.save_folder.setText(directory)
+
+    def delete_file(self) -> None:
+        row = self.ui.file_list.currentRow()
+        item = self.ui.file_list.takeItem(row)
+        try:
+            filepath = item.text()
+            del self.files_dict[filepath]
+        except KeyError:
+            pass
+        del item
+
+    def move_file_up(self) -> None:
+        current_row = self.ui.file_list.currentRow()
+        current_item = self.ui.file_list.takeItem(current_row)
+        self.ui.file_list.insertItem(current_row - 1, current_item)
+        self.ui.file_list.setCurrentItem(current_item)
+
+    def move_file_down(self) -> None:
+        current_row = self.ui.file_list.currentRow()
+        current_item = self.ui.file_list.takeItem(current_row)
+        self.ui.file_list.insertItem(current_row + 1, current_item)
+        self.ui.file_list.setCurrentItem(current_item)
+
+    def convert(self) -> None:
+        for key in self.files_dict.keys():
+            self.convert_hdf5_file(key)
+        self.write_app_status("finished converting", "green")
+
+    def mkdir(self, rootfolder: str, folder: str) -> str:
+        directory = os.path.join(rootfolder, folder)
+        if not os.path.isdir(directory):
+            self.write_console(f"creating directory {directory}")
+            os.mkdir(directory)
+        return directory
+
+    @staticmethod
+    def get_sweep(string: str) -> tuple[str, str]:
+        s = string.split("_")
+        sweep = f"{s[0]}_{s[1]}"
+        name = f"{s[2]}_{s[3]}.csv"
+        return sweep, name
+
+    def convert_hdf5_file(self, key: str) -> None:
+        fname = str(os.path.basename(os.path.normpath(key)))
+        self.write_console(f"starting file <{fname}>")
+        filebasename = fname[0:-5]
+        savedir = self.mkdir(self.hdf5_conversion_filepath, filebasename)
+        f = self.files_dict[key]
+        if self.ui.average_check.isChecked():
+            array = np.array(f["Average"]).T
+            fpath = os.path.join(savedir, "average_dTT.csv")
+            self.write_console(f"saving averaged dT/T data to {fpath!s}")
+            np.savetxt(fpath, array, delimiter=",")
+        if self.ui.metadata_check.isChecked():
+            g = f.get("Metadata")
+            fpath = os.path.join(savedir, "metadata.txt")
+            with open(fpath, "w") as fmd:
+                for key in g.attrs:
+                    fmd.write(str(key) + ": " + str(g.attrs[key]) + "\n")
+            self.write_console(f"saving metadata to {fpath!s}")
+        if self.ui.spectra_check.isChecked():
+            newsavedir = self.mkdir(savedir, "sweeps")
+            wavelength = np.array(f["Average"])[0, 1:]
+            group = f["Spectra"]
+            for spectrum_name in group.keys():
+                sweep, name = self.get_sweep(spectrum_name)
+                folder = self.mkdir(newsavedir, sweep)
+                spectrum = np.array(group[spectrum_name])
+                array = np.vstack((wavelength, spectrum)).T
+                fpath = os.path.join(folder, name)
+                self.write_console(f"saving spectrum to {fpath}")
+                np.savetxt(fpath, array, delimiter=",")
+        if self.ui.sweeps_check.isChecked():
+            newsavedir = self.mkdir(savedir, "sweeps")
+            group = f["Sweeps"]
+            for sweep in group.keys():
+                folder = self.mkdir(newsavedir, sweep)
+                array = np.array(group[sweep]).T
+                fpath = os.path.join(folder, "dTT.csv")
+                self.write_console(f"saving sweep dT/T data to {fpath}")
+                np.savetxt(fpath, array, delimiter=",")
+        f.close()
+        self.write_console(f"finished file <{fname}>")
 
 
 def run() -> None:
