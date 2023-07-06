@@ -3,6 +3,12 @@ name = "pyta"
 version = "0.1.0"
 description = "Desktop App for Transient Absorption Spectroscopy Systems"
 authors = ["David Bossanyi <22292532+davidbossanyi@users.noreply.github.com>"]
+packages = [
+    { include = "pyta" }
+]
+
+[tool.poetry.scripts]
+pyta = 'pyta.main:run'
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -25,9 +31,6 @@ ruff = "^0.0.247"
 mypy = "^1.0.1"
 deptry = "^0.8.0"
 pyqt5-stubs = "^5.15.6.0"
-
-[tool.poetry.scripts]
-pyta = 'pyta.main:run'
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]
