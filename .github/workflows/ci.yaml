@@ -13,28 +13,32 @@ on:
 
 jobs:
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: [ "3.8", "3.9", "3.10", "3.11" ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    name: Test ${{ matrix.os }} ${{ matrix.python_version }}
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python 3.8
+      - name: Setup Python ${{ matrix.python_version }}
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: ${{ matrix.python_version }}
 
       - uses: actions/cache@v3
         name: Cache Dependencies
         with:
           path: ~/.cache/pypoetry/virtualenvs
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ matrix.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
       - uses: actions/cache@v3
         name: Cache Pre-Commit
         with:
           path: ~/.cache/pre-commit
-          key: ${{ runner.os }}-pre-commit-${{ hashFiles('**/.pre-commit-config.yaml') }}
+          key: ${{ matrix.os }}-pre-commit-${{ hashFiles('**/.pre-commit-config.yaml') }}
 
       - name: Install Poetry
         run: |
