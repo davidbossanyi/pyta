@@ -3,6 +3,7 @@
 _Desktop App for Transient Absorption Spectroscopy Systems_
 
 [![CI](https://github.com/davidbossanyi/pyta/actions/workflows/ci.yaml/badge.svg)](https://github.com/davidbossanyi/pyta/actions/workflows/ci.yaml)
+[![Coverage](https://github.com/davidbossanyi/pyta/wiki/coverage.svg)](https://github.com/davidbossanyi/pyta/actions)
 
 ### Requirements
 * [python](https://www.python.org/downloads/) 3.8 or higher

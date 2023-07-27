@@ -1283,7 +1283,7 @@ class Application(QtWidgets.QMainWindow):
 
     def get_save_folder(self) -> None:
         if self.files_dict:
-            fpath = os.path.dirname(os.path.normpath(list(self.files_dict.keys())[0]))
+            fpath = os.path.dirname(os.path.normpath(next(iter(self.files_dict.keys()))))
         else:
             fpath = os.path.join(os.path.expanduser("~"), "Documents")
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose folder to save data", os.path.dirname(fpath))

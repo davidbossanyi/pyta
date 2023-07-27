@@ -16,17 +16,17 @@ numpy = "^1.24.2"
 h5py = "^3.9.0"
 pyqtgraph = "^0.13.3"
 pyqt5 = "^5.15.9"
-pydantic = "^1.10.11"
+pydantic = "^1.10.12"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.0"
-pytest-cov = "^4.1.0"
 pytest-qt = "^4.2.0"
+coverage = "^7.2.7"
 
 [tool.poetry.group.lint.dependencies]
 pre-commit = "^3.3.3"
-black = "^23.3.0"
-ruff = "^0.0.277"
+black = "^23.7.0"
+ruff = "^0.0.280"
 mypy = "^1.4.1"
 deptry = "^0.12.0"
 pyqt5-stubs = "^5.15.6.0"

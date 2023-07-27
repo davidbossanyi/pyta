@@ -17,7 +17,8 @@ help-sh:
 .PHONY: test
 ## Run tests
 test:
-	poetry run pytest --cov=. tests
+	poetry run coverage run -m pytest
+	poetry run coverage report
 
 .PHONY: fmt
 ## Format as much as possible
