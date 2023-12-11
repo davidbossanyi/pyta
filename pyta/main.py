@@ -568,7 +568,9 @@ class Application(QtWidgets.QMainWindow):
 
     def exec_timefile_folder_btn(self) -> None:
         timefile, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select TimeFile", self.timefile_folder, "TimeFiles (*.tf)")
-        self.timefile_folder = os.path.dirname(self.timefile[0])
+        if timefile == "":  # user clicked cancel
+            return
+        self.timefile_folder = os.path.dirname(timefile)
         if self.timefile_folder.endswith("/"):
             self.timefile_folder = self.timefile_folder[:-1]
         self.timefile = os.path.basename(timefile)
